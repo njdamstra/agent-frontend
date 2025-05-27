@@ -308,7 +308,14 @@
         }
         
         // Display response
-        const responseText = data.response || data.result || JSON.stringify(data);
+        let responseText;
+        if (data.response || data.result) {
+          responseText = data.response || data.result;
+        } else if (data.message === "Workflow was started") {
+          responseText = "Your message was received by the n8n workflow, but the workflow didn't return a response. Make sure your n8n workflow returns a JSON object with a 'response' or 'result' property.";
+        } else {
+          responseText = JSON.stringify(data, null, 2);
+        }
         displayResponse(message, responseText);
         statusEl.textContent = 'Message processed successfully!';
       } catch (error) {
