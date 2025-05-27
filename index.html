@@ -227,7 +227,7 @@
     const tabContents = document.querySelectorAll('.tab-content');
     
     // API URL - change this to your deployed backend URL
-    const API_URL = 'https://agent-backend.fly.dev';
+    const API_URL = 'https://agent-backend-misty-wildflower-5610.fly.dev';
     
     // State
     let isProcessing = false;
@@ -267,18 +267,41 @@
       statusEl.innerHTML = '<span class="spinner"></span> Processing message...';
       
       try {
+        console.log('Sending request to backend:', `${API_URL}/process`);
+        console.log('Message payload:', { message });
+        
         const response = await fetch(`${API_URL}/process`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
           body: JSON.stringify({ message })
         });
         
+        console.log('Response status:', response.status);
+        
         if (!response.ok) {
-          const errorText = await response.text();
+          let errorText = 'Unknown error';
+          try {
+            errorText = await response.text();
+            console.error('Error response body:', errorText);
+          } catch (e) {
+            console.error('Could not parse error response:', e);
+          }
           throw new Error(errorText || `Server responded with status: ${response.status}`);
         }
         
-        const data = await response.json();
+        let data;
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          data = await response.json();
+          console.log('Response data:', data);
+        } else {
+          const textResponse = await response.text();
+          console.log('Non-JSON response:', textResponse);
+          data = { response: textResponse };
+        }
         
         if (data.error) {
           throw new Error(data.error);
@@ -292,6 +315,8 @@
         console.error('Error processing message:', error);
         showToast(`Error: ${error.message}`);
         statusEl.textContent = `Error: ${error.message}`;
+        // Add debugging help
+        displayResponse(message, `Error: ${error.message}\n\nDebugging tips:\n1. Check that your n8n webhook URL is correct\n2. Make sure your n8n instance is running\n3. Check the n8n webhook trigger node configuration\n4. Verify the backend is deployed with the N8N_AGENT_WEBHOOK secret set\n5. Check browser console for more details`);
       } finally {
         isProcessing = false;
         sendButton.disabled = false;
