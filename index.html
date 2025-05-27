@@ -185,28 +185,16 @@
 </head>
 <body>
   <div class="container">
-    <div class="tabs">
-      <div class="tab active" data-tab="full-view">Full View</div>
-      <div class="tab" data-tab="message-only">Message Only</div>
-    </div>
     
-    <div id="full-view" class="tab-content active">
-      <div id="message-display" class="message-display"></div>
+    <div id="message-display" class="message-display"></div>
       
-      <div class="message-input">
-        <textarea id="message-textarea" placeholder="Type your message here..."></textarea>
-        <div class="controls">
-          <button id="send-button" class="primary">Send</button>
-          <button id="new-message-button">New Message</button>
-        </div>
-        <div id="status" class="status"></div>
+    <div class="message-input">
+      <textarea id="message-textarea" placeholder="Type your message here..."></textarea>
+      <div class="controls">
+        <button id="send-button" class="primary">Send</button>
+        <button id="new-message-button">New Message</button>
       </div>
-    </div>
-    
-    <div id="message-only" class="tab-content">
-      <div class="message-only-view">
-        <div id="message-display-simple" class="message-display"></div>
-      </div>
+      <div id="status" class="status"></div>
     </div>
   </div>
 
@@ -215,16 +203,11 @@
   <script>
     // DOM Elements
     const messageDisplayEl = document.getElementById('message-display');
-    const messageDisplaySimpleEl = document.getElementById('message-display-simple');
     const messageTextarea = document.getElementById('message-textarea');
     const sendButton = document.getElementById('send-button');
     const newMessageButton = document.getElementById('new-message-button');
     const statusEl = document.getElementById('status');
     const toastEl = document.getElementById('toast');
-    
-    // Tab elements
-    const tabs = document.querySelectorAll('.tab');
-    const tabContents = document.querySelectorAll('.tab-content');
     
     // API URL - change this to your deployed backend URL
     const API_URL = 'https://agent-backend-misty-wildflower-5610.fly.dev';
@@ -241,19 +224,7 @@
       }, duration);
     }
 
-    // Tab switching
-    tabs.forEach(tab => {
-      tab.addEventListener('click', () => {
-        // Remove active class from all tabs and contents
-        tabs.forEach(t => t.classList.remove('active'));
-        tabContents.forEach(c => c.classList.remove('active'));
-        
-        // Add active class to current tab and content
-        tab.classList.add('active');
-        const tabId = tab.getAttribute('data-tab');
-        document.getElementById(tabId).classList.add('active');
-      });
-    });
+    // No tab switching needed anymore
     
     // Process message with agent
     async function processMessage(message) {
@@ -339,18 +310,13 @@
       const responseEl = document.createElement('div');
       responseEl.innerHTML = `<strong>Agent:</strong> <div class="response">${response}</div>`;
       
-      // Add to both displays (full view and message-only)
+      // Add to message display
       messageDisplayEl.appendChild(userMessageEl);
       messageDisplayEl.appendChild(responseEl);
       messageDisplayEl.appendChild(document.createElement('hr'));
       
-      messageDisplaySimpleEl.appendChild(userMessageEl);
-      messageDisplaySimpleEl.appendChild(responseEl);
-      messageDisplaySimpleEl.appendChild(document.createElement('hr'));
-      
       // Scroll to bottom
       messageDisplayEl.scrollTop = messageDisplayEl.scrollHeight;
-      messageDisplaySimpleEl.scrollTop = messageDisplaySimpleEl.scrollHeight;
     }
     
     // Clear message input and display
@@ -362,7 +328,6 @@
     function newMessage() {
       clearMessage();
       messageDisplayEl.innerHTML = '';
-      messageDisplaySimpleEl.innerHTML = '';
       statusEl.textContent = '';
     }
     
