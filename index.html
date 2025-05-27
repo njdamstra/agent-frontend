@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notion Agent Widget</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #2E75CC;
+      --primary-dark: #1E5DA6;
+      --secondary: #37352F;
+      --accent: #F2F1F0;
+      --danger: #E03E3E;
+      --success: #0F7B0F;
+      --gray: #E9E9E8;
+      --radius: 4px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      color: var(--secondary);
+      background-color: #FFFFFF;
+      line-height: 1.6;
+      padding: 2rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .container {
+      background: #FFFFFF;
+      border-radius: 8px;
+      box-shadow: rgba(15, 15, 15, 0.1) 0px 0px 0px 1px, rgba(15, 15, 15, 0.1) 0px 2px 4px;
+      padding: 2rem;
+    }
+    
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--gray);
+      margin-bottom: 2rem;
+    }
+    
+    .tab {
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+    
+    .tab.active {
+      border-bottom: 2px solid var(--primary);
+      color: var(--primary);
+    }
+    
+    .tab-content {
+      display: none;
+    }
+    
+    .tab-content.active {
+      display: block;
+    }
+
+    .message-display {
+      min-height: 200px;
+      max-height: 300px;
+      overflow-y: auto;
+      background-color: var(--accent);
+      border-radius: var(--radius);
+      padding: 1rem;
+      margin-bottom: 1rem;
+      white-space: pre-wrap;
+      font-size: 1rem;
+    }
+
+    .message-input {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 0.75rem;
+      border: 1px solid var(--gray);
+      border-radius: var(--radius);
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem;
+      resize: vertical;
+    }
+
+    .controls {
+      display: flex;
+      gap: 1rem;
+    }
+
+    button {
+      background-color: var(--gray);
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: var(--radius);
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: 'Inter', sans-serif;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    button.primary {
+      background-color: var(--primary);
+      color: white;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .status {
+      margin-top: 1rem;
+      font-size: 0.875rem;
+      color: #6B6B6B;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 1rem;
+      height: 1rem;
+      border: 2px solid rgba(0, 0, 0, 0.1);
+      border-left-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 0.5rem;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: var(--secondary);
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border-radius: var(--radius);
+      font-size: 0.875rem;
+      font-weight: 500;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      z-index: 100;
+    }
+
+    .toast.show {
+      opacity: 1;
+    }
+    
+    .message-only-view {
+      display: flex;
+      flex-direction: column;
+      height: 70vh;
+    }
+    
+    .response {
+      font-size: 1rem;
+      line-height: 1.6;
+      margin-top: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="tabs">
+      <div class="tab active" data-tab="full-view">Full View</div>
+      <div class="tab" data-tab="message-only">Message Only</div>
+    </div>
+    
+    <div id="full-view" class="tab-content active">
+      <div id="message-display" class="message-display"></div>
+      
+      <div class="message-input">
+        <textarea id="message-textarea" placeholder="Type your message here..."></textarea>
+        <div class="controls">
+          <button id="send-button" class="primary">Send</button>
+          <button id="new-message-button">New Message</button>
+        </div>
+        <div id="status" class="status"></div>
+      </div>
+    </div>
+    
+    <div id="message-only" class="tab-content">
+      <div class="message-only-view">
+        <div id="message-display-simple" class="message-display"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    // DOM Elements
+    const messageDisplayEl = document.getElementById('message-display');
+    const messageDisplaySimpleEl = document.getElementById('message-display-simple');
+    const messageTextarea = document.getElementById('message-textarea');
+    const sendButton = document.getElementById('send-button');
+    const newMessageButton = document.getElementById('new-message-button');
+    const statusEl = document.getElementById('status');
+    const toastEl = document.getElementById('toast');
+    
+    // Tab elements
+    const tabs = document.querySelectorAll('.tab');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    // API URL - change this to your deployed backend URL
+    const API_URL = 'https://agent-backend.fly.dev';
+    
+    // State
+    let isProcessing = false;
+
+    // Show a toast message
+    function showToast(message, duration = 3000) {
+      toastEl.textContent = message;
+      toastEl.classList.add('show');
+      setTimeout(() => {
+        toastEl.classList.remove('show');
+      }, duration);
+    }
+
+    // Tab switching
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        // Remove active class from all tabs and contents
+        tabs.forEach(t => t.classList.remove('active'));
+        tabContents.forEach(c => c.classList.remove('active'));
+        
+        // Add active class to current tab and content
+        tab.classList.add('active');
+        const tabId = tab.getAttribute('data-tab');
+        document.getElementById(tabId).classList.add('active');
+      });
+    });
+    
+    // Process message with agent
+    async function processMessage(message) {
+      if (isProcessing) return;
+      
+      isProcessing = true;
+      messageTextarea.disabled = true;
+      sendButton.disabled = true;
+      
+      // Update status
+      statusEl.innerHTML = '<span class="spinner"></span> Processing message...';
+      
+      try {
+        const response = await fetch(`${API_URL}/process`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message })
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(errorText || `Server responded with status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.error) {
+          throw new Error(data.error);
+        }
+        
+        // Display response
+        const responseText = data.response || data.result || JSON.stringify(data);
+        displayResponse(message, responseText);
+        statusEl.textContent = 'Message processed successfully!';
+      } catch (error) {
+        console.error('Error processing message:', error);
+        showToast(`Error: ${error.message}`);
+        statusEl.textContent = `Error: ${error.message}`;
+      } finally {
+        isProcessing = false;
+        sendButton.disabled = false;
+        messageTextarea.disabled = false;
+      }
+    }
+    
+    // Display user message and agent response
+    function displayResponse(message, response) {
+      const userMessageEl = document.createElement('div');
+      userMessageEl.innerHTML = `<strong>You:</strong> ${message}`;
+      
+      const responseEl = document.createElement('div');
+      responseEl.innerHTML = `<strong>Agent:</strong> <div class="response">${response}</div>`;
+      
+      // Add to both displays (full view and message-only)
+      messageDisplayEl.appendChild(userMessageEl);
+      messageDisplayEl.appendChild(responseEl);
+      messageDisplayEl.appendChild(document.createElement('hr'));
+      
+      messageDisplaySimpleEl.appendChild(userMessageEl);
+      messageDisplaySimpleEl.appendChild(responseEl);
+      messageDisplaySimpleEl.appendChild(document.createElement('hr'));
+      
+      // Scroll to bottom
+      messageDisplayEl.scrollTop = messageDisplayEl.scrollHeight;
+      messageDisplaySimpleEl.scrollTop = messageDisplaySimpleEl.scrollHeight;
+    }
+    
+    // Clear message input and display
+    function clearMessage() {
+      messageTextarea.value = '';
+    }
+    
+    // Reset entire widget
+    function newMessage() {
+      clearMessage();
+      messageDisplayEl.innerHTML = '';
+      messageDisplaySimpleEl.innerHTML = '';
+      statusEl.textContent = '';
+    }
+    
+    // Event Listeners
+    sendButton.addEventListener('click', () => {
+      const message = messageTextarea.value.trim();
+      if (!message) {
+        showToast('Please enter a message');
+        return;
+      }
+      processMessage(message);
+    });
+    
+    newMessageButton.addEventListener('click', newMessage);
+    
+    // Allow sending with Enter (Shift+Enter for new line)
+    messageTextarea.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendButton.click();
+      }
+    });
+    
+    // Check API health on load
+    async function checkApiHealth() {
+      try {
+        const response = await fetch(`${API_URL}/health`);
+        if (response.ok) {
+          statusEl.textContent = 'Connected to agent backend';
+          setTimeout(() => { statusEl.textContent = ''; }, 3000);
+        } else {
+          statusEl.textContent = 'Warning: Agent backend not responding';
+        }
+      } catch (error) {
+        statusEl.textContent = 'Error: Cannot connect to agent backend';
+        console.error('Health check error:', error);
+      }
+    }
+    
+    // Initialize
+    checkApiHealth();
+  </script>
+</body>
+</html>
